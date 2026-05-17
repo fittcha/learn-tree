@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useApp } from '@/state/store';
 import { Settings } from '@/screens/Settings';
+import { GraphView } from '@/screens/GraphView';
 import { seedDefaultCategories, listCategories } from '@/data/categories';
 
 export default function App() {
@@ -15,12 +16,6 @@ export default function App() {
   }, [setCategories]);
 
   if (screen.kind === 'settings') return <Settings />;
-  return (
-    <div className="p-8">
-      <h1>learn-tree</h1>
-      <button onClick={() => useApp.getState().goTo({ kind: 'settings' })}>
-        설정 열기
-      </button>
-    </div>
-  );
+  if (screen.kind === 'graph') return <GraphView />;
+  return <div className="p-8">노드 상세 (구현 예정): {screen.nodeId}</div>;
 }
