@@ -5,15 +5,19 @@ import {
   createSession, getActiveSession, appendMessage,
 } from '@/data/sessions';
 import { useChatTurn } from '@/llm/useChatTurn';
+import { useWrapUp } from '@/llm/useWrapUp';
 
 export function ChatMode({ node, category }: { node: LearnNode; category: Category }) {
   const goTo = useApp(s => s.goTo);
   const runTurn = useChatTurn();
+  const wrapUp = useWrapUp();
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [wrapping, setWrapping] = useState(false);
+  const [wrapError, setWrapError] = useState<string | null>(null);
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -67,6 +71,19 @@ export function ChatMode({ node, category }: { node: LearnNode; category: Catego
     await runAssistant(sessionId, history, userMessage);
   }
 
+  async function onWrapUp() {
+    if (!sessionId || wrapping || streaming !== null) return;
+    setWrapping(true); setWrapError(null);
+    try {
+      await wrapUp({ node, sessionId, history: messages });
+      useApp.getState().goTo({ kind: 'node', nodeId: node.id });
+    } catch (e) {
+      setWrapError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setWrapping(false);
+    }
+  }
+
   return (
     <div className="h-screen flex flex-col max-w-3xl mx-auto">
       <header className="flex items-center justify-between p-4 border-b border-zinc-800">
@@ -76,8 +93,13 @@ export function ChatMode({ node, category }: { node: LearnNode; category: Catego
           </button>
           <h1 className="text-xl font-semibold">{node.title}</h1>
         </div>
-        <button className="px-3 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 rounded" disabled>
-          이쯤에서 마무리 (다음 태스크)
+        <button
+          onClick={onWrapUp}
+          disabled={wrapping || streaming !== null || messages.length < 4}
+          className="px-3 py-1 text-xs bg-amber-600 hover:bg-amber-500 rounded disabled:opacity-50"
+          title={messages.length < 4 ? '몇 턴 더 대화한 뒤에' : '학습 마치고 위키로'}
+        >
+          {wrapping ? '정리 중…' : '이쯤에서 마무리'}
         </button>
       </header>
 
@@ -90,6 +112,12 @@ export function ChatMode({ node, category }: { node: LearnNode; category: Catego
           <div className="bg-red-900/40 border border-red-700 rounded p-3 text-sm space-y-2">
             <p>{error}</p>
             <button onClick={onRetry} className="px-2 py-1 bg-red-700 rounded text-xs">재시도</button>
+          </div>
+        )}
+        {wrapError && (
+          <div className="bg-red-900/40 border border-red-700 rounded p-3 text-sm space-y-2">
+            <p>{wrapError}</p>
+            <button onClick={onWrapUp} className="px-2 py-1 bg-red-700 rounded text-xs">마무리 재시도</button>
           </div>
         )}
       </div>
