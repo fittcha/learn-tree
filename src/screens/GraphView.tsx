@@ -5,6 +5,7 @@ import { useApp } from '@/state/store';
 import { db } from '@/data/db';
 import type { Category, LearnNode } from '@/data/types';
 import { createNode } from '@/data/nodes';
+import { getSettings } from '@/data/settings';
 
 function layout(categories: Category[], nodes: LearnNode[]): { rfNodes: RFNode[]; edges: Edge[] } {
   const byCategory = new Map<string, LearnNode[]>();
@@ -56,11 +57,14 @@ export function GraphView() {
   const goTo = useApp(s => s.goTo);
   const [creating, setCreating] = useState<string | null>(null);
   const [title, setTitle] = useState('');
+  const [needsKey, setNeedsKey] = useState(false);
 
   useEffect(() => {
     void (async () => {
       const all = await db.nodes.toArray();
       setNodes(all);
+      const settings = await getSettings();
+      setNeedsKey(settings.geminiApiKey === '');
     })();
   }, [setNodes]);
 
@@ -125,6 +129,27 @@ export function GraphView() {
               <button className="px-3 py-1 text-sm text-zinc-400" onClick={() => { setCreating(null); setTitle(''); }}>취소</button>
               <button className="px-3 py-1 text-sm bg-emerald-600 rounded" onClick={onCreate}>시작</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {(needsKey || nodes.length === 0) && !creating && (
+        <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-8 w-[28rem] space-y-4 text-center pointer-events-auto shadow-2xl">
+            <h2 className="text-xl font-semibold">환영해요</h2>
+            <p className="text-sm text-zinc-400 leading-relaxed">
+              {needsKey
+                ? '먼저 설정에서 Gemini API 키를 등록한 뒤, 아래에서 카테고리 하나를 선택해 첫 주제를 만들어보세요.'
+                : '아래에서 카테고리 하나를 선택해 첫 주제를 만들어보세요.'}
+            </p>
+            {needsKey && (
+              <button
+                onClick={() => goTo({ kind: 'settings' })}
+                className="px-4 py-2 bg-emerald-600 rounded text-sm"
+              >
+                설정 열기
+              </button>
+            )}
           </div>
         </div>
       )}
