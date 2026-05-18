@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react';
 import { useApp } from '@/state/store';
 import type { Category, LearnNode, Session } from '@/data/types';
 import { getSessionByNode } from '@/data/sessions';
+import { getSettings } from '@/data/settings';
 import { createNode, getNode } from '@/data/nodes';
+import { ensureWritePermission, writeMarkdown } from '@/export/fsa';
+import { nodeToMarkdown, sanitizeFilename } from '@/export/markdown';
 
 export function WikiMode({ node, category }: { node: LearnNode; category: Category }) {
   const goTo = useApp(s => s.goTo);
@@ -32,6 +35,35 @@ export function WikiMode({ node, category }: { node: LearnNode; category: Catego
     setNodes([...nodes, child]);
   }
 
+  const [exportState, setExportState] = useState<{ status: 'idle' | 'writing' | 'done' | 'error'; message?: string }>({ status: 'idle' });
+
+  async function onExport() {
+    if (!session) return;
+    setExportState({ status: 'writing' });
+    try {
+      const settings = await getSettings();
+      if (!settings.obsidianVaultHandle) throw new Error('볼트 폴더가 설정되지 않았습니다.');
+      const granted = await ensureWritePermission(settings.obsidianVaultHandle);
+      if (!granted) throw new Error('볼트 폴더 권한이 거부되었습니다.');
+
+      let parent: LearnNode | null = null;
+      if (node.parentId) parent = (await getNode(node.parentId)) ?? null;
+
+      const md = nodeToMarkdown({
+        node, session, category, parent, summary: session.summary,
+      });
+      await writeMarkdown(
+        settings.obsidianVaultHandle,
+        category.name,
+        sanitizeFilename(node.title),
+        md,
+      );
+      setExportState({ status: 'done' });
+    } catch (e) {
+      setExportState({ status: 'error', message: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
   if (!session) return <div className="p-8">불러오는 중…</div>;
 
   const summary = session.summary;
@@ -39,13 +71,30 @@ export function WikiMode({ node, category }: { node: LearnNode; category: Catego
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <header className="border-b border-zinc-800 pb-3 space-y-1">
-        <button className="text-xs text-zinc-500 hover:text-zinc-300" onClick={() => goTo({ kind: 'graph' })}>
-          ← 그래프로
-        </button>
+        <div className="flex items-center justify-between">
+          <button className="text-xs text-zinc-500 hover:text-zinc-300" onClick={() => goTo({ kind: 'graph' })}>
+            ← 그래프로
+          </button>
+          {'showDirectoryPicker' in window && (
+            <button
+              onClick={onExport}
+              disabled={exportState.status === 'writing'}
+              className="text-xs px-3 py-1 bg-zinc-800 hover:bg-zinc-700 rounded disabled:opacity-50"
+            >
+              {exportState.status === 'idle' && '옵시디언으로 export'}
+              {exportState.status === 'writing' && '쓰는 중…'}
+              {exportState.status === 'done' && '✓ 완료'}
+              {exportState.status === 'error' && '에러: 재시도'}
+            </button>
+          )}
+        </div>
         <h1 className="text-2xl font-semibold" style={{ color: category.color }}>{node.title}</h1>
         <p className="text-xs text-zinc-500">
           카테고리: {category.name} · 부모: {parentTitle ?? '(없음)'} · 완료: {node.completedAt ? new Date(node.completedAt).toISOString().slice(0, 10) : '—'}
         </p>
+        {exportState.status === 'error' && exportState.message && (
+          <p className="text-xs text-red-400">{exportState.message}</p>
+        )}
       </header>
 
       {summary && (
