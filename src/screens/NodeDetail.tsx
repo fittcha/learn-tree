@@ -4,6 +4,7 @@ import { getNode } from '@/data/nodes';
 import { listCategories } from '@/data/categories';
 import type { Category, LearnNode } from '@/data/types';
 import { ChatMode } from './ChatMode';
+import { WikiMode } from './WikiMode';
 
 export function NodeDetail({ nodeId }: { nodeId: string }) {
   const goTo = useApp(s => s.goTo);
@@ -24,5 +25,6 @@ export function NodeDetail({ nodeId }: { nodeId: string }) {
   if (node.status === 'learning' || node.status === 'proposed') {
     return <ChatMode node={node} category={category} />;
   }
-  return <div className="p-8">완료 모드 (다음 태스크에서 구현)</div>;
+  if (node.status === 'completed') return <WikiMode node={node} category={category} />;
+  return null;
 }
