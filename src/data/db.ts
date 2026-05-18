@@ -15,6 +15,16 @@ class LearnTreeDB extends Dexie {
       sessions: 'id, nodeId, startedAt',
       settings: 'id',
     });
+    this.version(2).stores({
+      categories: 'id, order',
+      nodes: 'id, categoryId, parentId, status, createdAt',
+      sessions: 'id, nodeId, startedAt',
+      settings: 'id',
+    }).upgrade(async tx => {
+      await tx.table('sessions').toCollection().modify((s: Record<string, unknown>) => {
+        if (typeof s['summary'] !== 'string') s['summary'] = '';
+      });
+    });
   }
 }
 

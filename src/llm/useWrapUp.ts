@@ -35,7 +35,7 @@ export function useWrapUp() {
       wrapUpPrompt: buildWrapUpPrompt(),
     });
 
-    await finishSession(sessionId, result.children);
+    await finishSession(sessionId, result.children, result.summary);
     await updateNodeStatus(node.id, 'completed');
 
     return result;

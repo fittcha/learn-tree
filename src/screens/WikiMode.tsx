@@ -34,7 +34,7 @@ export function WikiMode({ node, category }: { node: LearnNode; category: Catego
 
   if (!session) return <div className="p-8">불러오는 중…</div>;
 
-  const summary = extractSummary(session);
+  const summary = session.summary;
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -95,8 +95,3 @@ export function WikiMode({ node, category }: { node: LearnNode; category: Catego
   );
 }
 
-function extractSummary(session: Session): string {
-  // Will be replaced with session.summary in Task 20
-  const last = [...session.messages].reverse().find(m => m.role === 'assistant');
-  return last?.content.slice(0, 280) ?? '';
-}

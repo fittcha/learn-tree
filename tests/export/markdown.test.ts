@@ -14,6 +14,7 @@ const session: Session = {
     { role: 'user', content: '메모리 절약 때문에', timestamp: 2 },
   ],
   suggestedChildren: ['해시 함수', 'false positive'],
+  summary: 'S',
   startedAt: 1, completedAt: 3,
 };
 
