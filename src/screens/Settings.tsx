@@ -12,7 +12,7 @@ export function Settings() {
   useEffect(() => {
     void (async () => {
       const s = await getSettings();
-      setKey(s.geminiApiKey);
+      setKey(s.apiKey);
       setHasVault(s.obsidianVaultHandle !== null);
     })();
   }, []);
@@ -42,17 +42,17 @@ export function Settings() {
       </header>
 
       <section className="space-y-2">
-        <label className="block text-sm font-medium">Gemini API 키</label>
+        <label className="block text-sm font-medium">Groq API 키</label>
         <input
           type="password"
           value={key}
           onChange={(e) => setKey(e.target.value)}
           onBlur={onSaveKey}
-          placeholder="AIza..."
+          placeholder="gsk_..."
           className="w-full bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-sm"
         />
         <p className="text-xs text-zinc-500">
-          Google AI Studio에서 발급. 키는 본인 브라우저에만 저장됩니다.
+          console.groq.com에서 발급. 키는 본인 브라우저에만 저장됩니다.
         </p>
       </section>
 

@@ -35,6 +35,6 @@ export interface Session {
 
 export interface AppSettings {
   id: 'singleton';
-  geminiApiKey: string;
+  apiKey: string;
   obsidianVaultHandle: FileSystemDirectoryHandle | null;
 }

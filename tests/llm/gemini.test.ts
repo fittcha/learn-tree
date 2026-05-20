@@ -1,25 +1,24 @@
 import { describe, it, expect, vi } from 'vitest';
 
-const generateContentStream = vi.fn();
-const generateContent = vi.fn();
+const mockCreate = vi.fn();
 
-vi.mock('@google/genai', () => ({
-  GoogleGenAI: class {
-    models = { generateContentStream, generateContent };
+vi.mock('groq-sdk', () => ({
+  default: class {
+    chat = { completions: { create: mockCreate } };
   },
 }));
 
-import { createGeminiAdapter } from '@/llm/gemini';
+import { createGroqAdapter } from '@/llm/gemini';
 
-describe('gemini adapter', () => {
+describe('groq adapter', () => {
   it('streams chat turn tokens', async () => {
     async function* fakeStream() {
-      yield { text: 'hel' };
-      yield { text: 'lo' };
+      yield { choices: [{ delta: { content: 'hel' } }] };
+      yield { choices: [{ delta: { content: 'lo' } }] };
     }
-    generateContentStream.mockResolvedValue(fakeStream());
+    mockCreate.mockResolvedValue(fakeStream());
 
-    const adapter = createGeminiAdapter();
+    const adapter = createGroqAdapter();
     const chunks: string[] = [];
     for await (const c of adapter.streamTurn({
       apiKey: 'k', systemPrompt: 'sys', history: [], userMessage: 'hi',
@@ -30,11 +29,11 @@ describe('gemini adapter', () => {
   });
 
   it('returns structured wrap-up result', async () => {
-    generateContent.mockResolvedValue({
-      text: JSON.stringify({ summary: 'S', children: ['a', 'b', 'c'] }),
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: JSON.stringify({ summary: 'S', children: ['a', 'b', 'c'] }) } }],
     });
 
-    const adapter = createGeminiAdapter();
+    const adapter = createGroqAdapter();
     const result = await adapter.wrapUp({
       apiKey: 'k', systemPrompt: 'sys', history: [], wrapUpPrompt: 'wrap',
     });
@@ -43,8 +42,10 @@ describe('gemini adapter', () => {
   });
 
   it('throws clear error on invalid wrap-up JSON', async () => {
-    generateContent.mockResolvedValue({ text: 'not json' });
-    const adapter = createGeminiAdapter();
+    mockCreate.mockResolvedValue({
+      choices: [{ message: { content: 'not json' } }],
+    });
+    const adapter = createGroqAdapter();
     await expect(
       adapter.wrapUp({ apiKey: 'k', systemPrompt: 's', history: [], wrapUpPrompt: 'w' }),
     ).rejects.toThrow(/parse|json/i);

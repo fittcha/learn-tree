@@ -4,7 +4,7 @@ import { listCategories } from '@/data/categories';
 import { getNode, updateNodeStatus } from '@/data/nodes';
 import { finishSession } from '@/data/sessions';
 import { buildSystemPrompt, buildWrapUpPrompt } from '@/llm/prompts';
-import { createGeminiAdapter } from '@/llm/gemini';
+import { createGroqAdapter } from '@/llm/gemini';
 import type { ChatMessage, LearnNode } from '@/data/types';
 
 interface WrapUpArgs {
@@ -16,7 +16,7 @@ interface WrapUpArgs {
 export function useWrapUp() {
   return useCallback(async ({ node, sessionId, history }: WrapUpArgs) => {
     const settings = await getSettings();
-    if (!settings.geminiApiKey) throw new Error('API 키가 설정되지 않았습니다.');
+    if (!settings.apiKey) throw new Error('API 키가 설정되지 않았습니다.');
 
     const cats = await listCategories();
     const category = cats.find(c => c.id === node.categoryId);
@@ -26,10 +26,10 @@ export function useWrapUp() {
     if (node.parentId) parentTitle = (await getNode(node.parentId))?.title ?? null;
 
     const sys = buildSystemPrompt({ nodeTitle: node.title, categoryName: category.name, parentTitle });
-    const adapter = createGeminiAdapter();
+    const adapter = createGroqAdapter();
 
     const result = await adapter.wrapUp({
-      apiKey: settings.geminiApiKey,
+      apiKey: settings.apiKey,
       systemPrompt: sys,
       history,
       wrapUpPrompt: buildWrapUpPrompt(),

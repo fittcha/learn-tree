@@ -19,6 +19,7 @@ export function ChatMode({ node, category }: { node: LearnNode; category: Catego
   const [wrapping, setWrapping] = useState(false);
   const [wrapError, setWrapError] = useState<string | null>(null);
   const initialized = useRef(false);
+  const sending = useRef(false);
 
   useEffect(() => {
     void (async () => {
@@ -43,7 +44,7 @@ export function ChatMode({ node, category }: { node: LearnNode; category: Catego
         node, sessionId: sid, history,
         userMessage, onToken: setStreaming,
       });
-      setMessages([...history, ...(userMessage === '시작' ? [] : [{ role: 'user' as const, content: userMessage, timestamp: Date.now() }]),
+      setMessages([...history,
         { role: 'assistant' as const, content: final, timestamp: Date.now() },
       ]);
     } catch (e) {
@@ -54,13 +55,15 @@ export function ChatMode({ node, category }: { node: LearnNode; category: Catego
   }
 
   async function onSend() {
-    if (!input.trim() || !sessionId || streaming !== null) return;
+    if (!input.trim() || !sessionId || streaming !== null || sending.current) return;
+    sending.current = true;
     const userMsg: ChatMessage = { role: 'user', content: input.trim(), timestamp: Date.now() };
     await appendMessage(sessionId, userMsg);
     const next = [...messages, userMsg];
     setMessages(next);
     setInput('');
     await runAssistant(sessionId, next, userMsg.content);
+    sending.current = false;
   }
 
   async function onRetry() {
@@ -123,13 +126,14 @@ export function ChatMode({ node, category }: { node: LearnNode; category: Catego
       </div>
 
       <div className="p-4 border-t border-zinc-800 flex gap-2">
-        <input
+        <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void onSend(); } }}
           placeholder={streaming !== null ? '응답을 기다리는 중…' : '답을 입력하세요…'}
           disabled={streaming !== null}
-          className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-2 disabled:opacity-50"
+          rows={1}
+          className="flex-1 bg-zinc-900 border border-zinc-800 rounded px-3 py-2 disabled:opacity-50 resize-none"
         />
         <button onClick={onSend} disabled={streaming !== null} className="px-4 py-2 bg-emerald-600 rounded text-sm disabled:opacity-50">
           보내기

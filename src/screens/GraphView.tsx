@@ -64,7 +64,7 @@ export function GraphView() {
       const all = await db.nodes.toArray();
       setNodes(all);
       const settings = await getSettings();
-      setNeedsKey(settings.geminiApiKey === '');
+      setNeedsKey(settings.apiKey === '');
     })();
   }, [setNodes]);
 

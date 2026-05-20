@@ -4,7 +4,7 @@ import { listCategories } from '@/data/categories';
 import { getNode } from '@/data/nodes';
 import { appendMessage } from '@/data/sessions';
 import { buildSystemPrompt } from '@/llm/prompts';
-import { createGeminiAdapter } from '@/llm/gemini';
+import { createGroqAdapter } from '@/llm/gemini';
 import type { ChatMessage, LearnNode } from '@/data/types';
 
 interface RunTurnArgs {
@@ -18,7 +18,7 @@ interface RunTurnArgs {
 export function useChatTurn() {
   return useCallback(async (args: RunTurnArgs): Promise<string> => {
     const settings = await getSettings();
-    if (!settings.geminiApiKey) throw new Error('API 키가 설정되지 않았습니다.');
+    if (!settings.apiKey) throw new Error('API 키가 설정되지 않았습니다.');
 
     const cats = await listCategories();
     const category = cats.find(c => c.id === args.node.categoryId);
@@ -35,11 +35,11 @@ export function useChatTurn() {
       categoryName: category.name,
       parentTitle,
     });
-    const adapter = createGeminiAdapter();
+    const adapter = createGroqAdapter();
 
     let full = '';
     for await (const tok of adapter.streamTurn({
-      apiKey: settings.geminiApiKey,
+      apiKey: settings.apiKey,
       systemPrompt: sys,
       history: args.history,
       userMessage: args.userMessage,

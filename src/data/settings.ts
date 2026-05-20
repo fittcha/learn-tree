@@ -5,7 +5,7 @@ const SINGLETON_ID = 'singleton' as const;
 
 const DEFAULT: AppSettings = {
   id: SINGLETON_ID,
-  geminiApiKey: '',
+  apiKey: '',
   obsidianVaultHandle: null,
 };
 
@@ -15,7 +15,7 @@ export async function getSettings(): Promise<AppSettings> {
 
 export async function setApiKey(key: string): Promise<void> {
   const current = await getSettings();
-  await db.settings.put({ ...current, geminiApiKey: key });
+  await db.settings.put({ ...current, apiKey: key });
 }
 
 export async function setVaultHandle(handle: FileSystemDirectoryHandle | null): Promise<void> {

@@ -1,55 +1,46 @@
-import { GoogleGenAI } from '@google/genai';
+import Groq from 'groq-sdk';
 import type { ChatAdapter, ChatTurnInput, WrapUpInput, WrapUpResult } from './types';
 import type { ChatMessage } from '@/data/types';
 
-const MODEL = 'gemini-2.0-flash';
+const MODEL = 'llama-3.1-8b-instant';
 
-function toContents(history: ChatMessage[], userMessage: string) {
-  const turns = history.map(m => ({
-    role: m.role === 'assistant' ? 'model' : 'user',
-    parts: [{ text: m.content }],
-  }));
-  turns.push({ role: 'user', parts: [{ text: userMessage }] });
-  return turns;
+type GroqMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+const MAX_HISTORY = 6;
+
+function toMessages(systemPrompt: string, history: ChatMessage[], userMessage: string): GroqMessage[] {
+  const msgs: GroqMessage[] = [{ role: 'system', content: systemPrompt }];
+  const recent = history.slice(-MAX_HISTORY);
+  for (const m of recent) {
+    msgs.push({ role: m.role, content: m.content });
+  }
+  msgs.push({ role: 'user', content: userMessage });
+  return msgs;
 }
 
-export function createGeminiAdapter(): ChatAdapter {
+export function createGroqAdapter(): ChatAdapter {
   return {
     async *streamTurn(input: ChatTurnInput): AsyncIterable<string> {
-      const ai = new GoogleGenAI({ apiKey: input.apiKey });
-      const stream = await ai.models.generateContentStream({
+      const groq = new Groq({ apiKey: input.apiKey, dangerouslyAllowBrowser: true });
+      const stream = await groq.chat.completions.create({
         model: MODEL,
-        contents: toContents(input.history, input.userMessage),
-        config: { systemInstruction: input.systemPrompt },
+        messages: toMessages(input.systemPrompt, input.history, input.userMessage),
+        stream: true,
       });
       for await (const chunk of stream) {
-        const text = chunk.text;
+        const text = chunk.choices[0]?.delta?.content;
         if (text) yield text;
       }
     },
 
     async wrapUp(input: WrapUpInput): Promise<WrapUpResult> {
-      const ai = new GoogleGenAI({ apiKey: input.apiKey });
-      const response = await ai.models.generateContent({
+      const groq = new Groq({ apiKey: input.apiKey, dangerouslyAllowBrowser: true });
+      const response = await groq.chat.completions.create({
         model: MODEL,
-        contents: toContents(input.history, input.wrapUpPrompt),
-        config: {
-          systemInstruction: input.systemPrompt,
-          responseMimeType: 'application/json',
-          responseSchema: {
-            type: 'object' as const,
-            properties: {
-              summary: { type: 'string' as const },
-              children: {
-                type: 'array' as const,
-                items: { type: 'string' as const },
-              },
-            },
-            required: ['summary', 'children'],
-          },
-        },
+        messages: toMessages(input.systemPrompt, input.history, input.wrapUpPrompt),
+        response_format: { type: 'json_object' },
       });
-      const raw = response.text;
+      const raw = response.choices[0]?.message?.content;
       if (!raw) throw new Error('wrap-up: empty response');
       let parsed: unknown;
       try {
