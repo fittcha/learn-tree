@@ -8,6 +8,7 @@ export async function createSession(nodeId: string): Promise<Session> {
     messages: [],
     suggestedChildren: [],
     summary: '',
+    diagram: '',
     startedAt: Date.now(),
     completedAt: null,
   };
@@ -22,11 +23,12 @@ export async function appendMessage(sessionId: string, message: ChatMessage): Pr
   await db.sessions.put(session);
 }
 
-export async function finishSession(sessionId: string, children: string[], summary: string): Promise<void> {
+export async function finishSession(sessionId: string, children: string[], summary: string, diagram: string): Promise<void> {
   await db.sessions.update(sessionId, {
     completedAt: Date.now(),
     suggestedChildren: children,
     summary,
+    diagram,
   });
 }
 

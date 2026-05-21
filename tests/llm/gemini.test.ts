@@ -30,7 +30,7 @@ describe('groq adapter', () => {
 
   it('returns structured wrap-up result', async () => {
     mockCreate.mockResolvedValue({
-      choices: [{ message: { content: JSON.stringify({ summary: 'S', children: ['a', 'b', 'c'] }) } }],
+      choices: [{ message: { content: JSON.stringify({ summary: 'S', diagram: 'graph TD; A-->B', children: ['a', 'b', 'c'] }) } }],
     });
 
     const adapter = createGroqAdapter();
@@ -38,6 +38,7 @@ describe('groq adapter', () => {
       apiKey: 'k', systemPrompt: 'sys', history: [], wrapUpPrompt: 'wrap',
     });
     expect(result.summary).toBe('S');
+    expect(result.diagram).toBe('graph TD; A-->B');
     expect(result.children).toEqual(['a', 'b', 'c']);
   });
 

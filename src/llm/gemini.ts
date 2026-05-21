@@ -2,11 +2,11 @@ import Groq from 'groq-sdk';
 import type { ChatAdapter, ChatTurnInput, WrapUpInput, WrapUpResult } from './types';
 import type { ChatMessage } from '@/data/types';
 
-const MODEL = 'llama-3.1-8b-instant';
+const MODEL = 'llama-3.3-70b-versatile';
 
 type GroqMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
-const MAX_HISTORY = 6;
+const MAX_HISTORY = 10;
 
 function toMessages(systemPrompt: string, history: ChatMessage[], userMessage: string): GroqMessage[] {
   const msgs: GroqMessage[] = [{ role: 'system', content: systemPrompt }];
@@ -48,13 +48,15 @@ export function createGroqAdapter(): ChatAdapter {
       } catch {
         throw new Error(`wrap-up: failed to parse JSON: ${raw.slice(0, 100)}`);
       }
+      const obj = parsed as Record<string, unknown>;
       if (
         typeof parsed !== 'object' || parsed === null ||
-        typeof (parsed as Record<string, unknown>).summary !== 'string' ||
-        !Array.isArray((parsed as Record<string, unknown>).children)
+        typeof obj.summary !== 'string' ||
+        !Array.isArray(obj.children)
       ) {
         throw new Error('wrap-up: response did not match schema');
       }
+      if (typeof obj.diagram !== 'string') obj.diagram = '';
       return parsed as WrapUpResult;
     },
   };

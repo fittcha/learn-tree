@@ -16,6 +16,7 @@ export interface WrapUpInput {
 
 export interface WrapUpResult {
   summary: string;
+  diagram: string;
   children: string[];
 }
 

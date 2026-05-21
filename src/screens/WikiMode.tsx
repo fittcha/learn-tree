@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '@/state/store';
 import type { Category, LearnNode, Session } from '@/data/types';
 import { getSessionByNode } from '@/data/sessions';
@@ -6,6 +6,42 @@ import { getSettings } from '@/data/settings';
 import { createNode, getNode } from '@/data/nodes';
 import { ensureWritePermission, writeMarkdown } from '@/export/fsa';
 import { nodeToMarkdown, sanitizeFilename } from '@/export/markdown';
+import mermaid from 'mermaid';
+
+mermaid.initialize({ startOnLoad: false, theme: 'dark' });
+
+function MermaidDiagram({ code }: { code: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ref.current || !code) return;
+    const id = `mermaid-${Date.now()}`;
+    mermaid.render(id, code).then(({ svg }) => {
+      if (ref.current) ref.current.innerHTML = svg;
+    }).catch(() => {
+      if (ref.current) ref.current.textContent = '다이어그램 렌더링 실패';
+    });
+  }, [code]);
+
+  if (!code) return null;
+  return <div ref={ref} className="bg-zinc-900 rounded p-4 overflow-x-auto" />;
+}
+
+function MarkdownContent({ content }: { content: string }) {
+  const html = simpleMarkdown(content);
+  return <div className="prose prose-invert prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function simpleMarkdown(md: string): string {
+  return md
+    .replace(/^## (.+)$/gm, '<h2 class="text-lg font-semibold text-zinc-200 mt-6 mb-2">$1</h2>')
+    .replace(/^### (.+)$/gm, '<h3 class="text-base font-semibold text-zinc-300 mt-4 mb-1">$1</h3>')
+    .replace(/^\- (.+)$/gm, '<li class="ml-4 list-disc text-sm leading-relaxed">$1</li>')
+    .replace(/^\d+\. (.+)$/gm, '<li class="ml-4 list-decimal text-sm leading-relaxed">$1</li>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-zinc-100">$1</strong>')
+    .replace(/\n{2,}/g, '<br/><br/>')
+    .replace(/\n/g, '<br/>');
+}
 
 export function WikiMode({ node, category }: { node: LearnNode; category: Category }) {
   const goTo = useApp(s => s.goTo);
@@ -64,9 +100,7 @@ export function WikiMode({ node, category }: { node: LearnNode; category: Catego
     }
   }
 
-  if (!session) return <div className="p-8">불러오는 중…</div>;
-
-  const summary = session.summary;
+  if (!session) return <div className="p-8">불러오는 중...</div>;
 
   return (
     <div className="max-w-3xl mx-auto p-6 space-y-6">
@@ -82,39 +116,33 @@ export function WikiMode({ node, category }: { node: LearnNode; category: Catego
               className="text-xs px-3 py-1 bg-zinc-800 hover:bg-zinc-700 rounded disabled:opacity-50"
             >
               {exportState.status === 'idle' && '옵시디언으로 export'}
-              {exportState.status === 'writing' && '쓰는 중…'}
-              {exportState.status === 'done' && '✓ 완료'}
+              {exportState.status === 'writing' && '쓰는 중...'}
+              {exportState.status === 'done' && '완료'}
               {exportState.status === 'error' && '에러: 재시도'}
             </button>
           )}
         </div>
         <h1 className="text-2xl font-semibold" style={{ color: category.color }}>{node.title}</h1>
         <p className="text-xs text-zinc-500">
-          카테고리: {category.name} · 부모: {parentTitle ?? '(없음)'} · 완료: {node.completedAt ? new Date(node.completedAt).toISOString().slice(0, 10) : '—'}
+          카테고리: {category.name} · 부모: {parentTitle ?? '(없음)'} · 완료: {node.completedAt ? new Date(node.completedAt).toISOString().slice(0, 10) : '-'}
         </p>
         {exportState.status === 'error' && exportState.message && (
           <p className="text-xs text-red-400">{exportState.message}</p>
         )}
       </header>
 
-      {summary && (
+      {session.summary && (
         <section>
-          <h2 className="text-sm font-semibold text-zinc-400 mb-2">요약</h2>
-          <p className="text-sm leading-relaxed">{summary}</p>
+          <MarkdownContent content={session.summary} />
         </section>
       )}
 
-      <section>
-        <h2 className="text-sm font-semibold text-zinc-400 mb-2">학습 대화</h2>
-        <div className="space-y-3 text-sm">
-          {session.messages.map((m, i) => (
-            <div key={i}>
-              <span className="font-semibold text-zinc-400">{m.role === 'assistant' ? 'Q' : 'A'}: </span>
-              <span className="whitespace-pre-wrap">{m.content}</span>
-            </div>
-          ))}
-        </div>
-      </section>
+      {session.diagram && (
+        <section>
+          <h2 className="text-lg font-semibold text-zinc-200 mt-6 mb-3">흐름도</h2>
+          <MermaidDiagram code={session.diagram} />
+        </section>
+      )}
 
       <section>
         <h2 className="text-sm font-semibold text-zinc-400 mb-2">다음에 팔만한 주제</h2>
@@ -140,7 +168,20 @@ export function WikiMode({ node, category }: { node: LearnNode; category: Catego
           </ul>
         )}
       </section>
+
+      <details className="text-zinc-600">
+        <summary className="text-xs cursor-pointer hover:text-zinc-400">
+          대화 원문 보기 ({session.messages.length}턴)
+        </summary>
+        <div className="mt-3 space-y-3 text-sm text-zinc-400">
+          {session.messages.map((m, i) => (
+            <div key={i}>
+              <span className="font-semibold">{m.role === 'assistant' ? 'Q' : 'A'}: </span>
+              <span className="whitespace-pre-wrap">{m.content}</span>
+            </div>
+          ))}
+        </div>
+      </details>
     </div>
   );
 }
-

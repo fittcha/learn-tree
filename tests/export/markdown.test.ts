@@ -15,6 +15,7 @@ const session: Session = {
   ],
   suggestedChildren: ['해시 함수', 'false positive'],
   summary: 'S',
+  diagram: '',
   startedAt: 1, completedAt: 3,
 };
 

@@ -29,6 +29,7 @@ export interface Session {
   messages: ChatMessage[];
   suggestedChildren: string[];
   summary: string;
+  diagram: string;
   startedAt: number;
   completedAt: number | null;
 }

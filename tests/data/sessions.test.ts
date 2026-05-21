@@ -27,7 +27,7 @@ describe('sessions', () => {
 
   it('finishes a session with summary and children', async () => {
     const s = await createSession('node-1');
-    await finishSession(s.id, ['해시 함수', 'false positive'], '블룸필터 요약');
+    await finishSession(s.id, ['해시 함수', 'false positive'], '블룸필터 요약', '');
     const got = await db.sessions.get(s.id);
     expect(got?.completedAt).not.toBeNull();
     expect(got?.suggestedChildren).toEqual(['해시 함수', 'false positive']);
@@ -36,7 +36,7 @@ describe('sessions', () => {
 
   it('returns only the active (uncompleted) session for a node', async () => {
     const a = await createSession('node-1');
-    await finishSession(a.id, [], '');
+    await finishSession(a.id, [], '', '');
     const b = await createSession('node-1');
     const active = await getActiveSession('node-1');
     expect(active?.id).toBe(b.id);

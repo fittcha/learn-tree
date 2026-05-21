@@ -25,6 +25,16 @@ class LearnTreeDB extends Dexie {
         if (typeof s['summary'] !== 'string') s['summary'] = '';
       });
     });
+    this.version(3).stores({
+      categories: 'id, order',
+      nodes: 'id, categoryId, parentId, status, createdAt',
+      sessions: 'id, nodeId, startedAt',
+      settings: 'id',
+    }).upgrade(async tx => {
+      await tx.table('sessions').toCollection().modify((s: Record<string, unknown>) => {
+        if (typeof s['diagram'] !== 'string') s['diagram'] = '';
+      });
+    });
   }
 }
 
