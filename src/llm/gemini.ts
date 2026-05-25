@@ -18,6 +18,18 @@ function toMessages(systemPrompt: string, history: ChatMessage[], userMessage: s
   return msgs;
 }
 
+function buildWrapUpMessages(systemPrompt: string, history: ChatMessage[], wrapUpPrompt: string): GroqMessage[] {
+  // Compress full conversation into a single user message for wrap-up
+  const transcript = history.map(m =>
+    `${m.role === 'assistant' ? 'tutor' : 'learner'}: ${m.content}`
+  ).join('\n\n');
+
+  return [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: `아래는 전체 학습 대화입니다:\n\n${transcript}\n\n---\n\n${wrapUpPrompt}` },
+  ];
+}
+
 export function createGroqAdapter(): ChatAdapter {
   return {
     async *streamTurn(input: ChatTurnInput): AsyncIterable<string> {
@@ -37,7 +49,7 @@ export function createGroqAdapter(): ChatAdapter {
       const groq = new Groq({ apiKey: input.apiKey, dangerouslyAllowBrowser: true });
       const response = await groq.chat.completions.create({
         model: MODEL,
-        messages: toMessages(input.systemPrompt, input.history, input.wrapUpPrompt),
+        messages: buildWrapUpMessages(input.systemPrompt, input.history, input.wrapUpPrompt),
         response_format: { type: 'json_object' },
       });
       const raw = response.choices[0]?.message?.content;

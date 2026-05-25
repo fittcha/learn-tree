@@ -16,10 +16,13 @@ function MermaidDiagram({ code }: { code: string }) {
   useEffect(() => {
     if (!ref.current || !code) return;
     const id = `mermaid-${Date.now()}`;
-    mermaid.render(id, code).then(({ svg }) => {
+    const cleaned = code.replace(/```mermaid\n?/g, '').replace(/```\n?/g, '').trim();
+    mermaid.render(id, cleaned).then(({ svg }) => {
       if (ref.current) ref.current.innerHTML = svg;
     }).catch(() => {
-      if (ref.current) ref.current.textContent = '다이어그램 렌더링 실패';
+      if (ref.current) {
+        ref.current.innerHTML = `<pre class="text-xs text-zinc-500 whitespace-pre-wrap">${cleaned}</pre>`;
+      }
     });
   }, [code]);
 
